@@ -1020,6 +1020,7 @@ window.addEventListener('resize', resize);
 /* ------------------------------------------------ init */
 function init() {
   const sv = loadSave();
+  S.hasSave = false;
   if (sv) {
     if (sv.lang) { S.lang = sv.lang; }
     S.muted = !!sv.muted;
@@ -1029,9 +1030,9 @@ function init() {
     S.time = sv.time || 0;
     S.secret = !!sv.secret;
     S.levelIdx = clamp(sv.level || 0, 0, LEVELS.length - 1);
-    $('#btn-continue').style.display = S.hasSave ? '' : 'none';
     if (S.hasSave) $('#save-hint').textContent = tr('ui.saveFound');
   }
+  $('#btn-continue').style.display = S.hasSave ? '' : 'none';
   S.lvl = LEVELS[0];
   startLevel(0, true);
   S.mode = 'splash';
