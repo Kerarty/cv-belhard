@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Ярослав Кукар — Game Designer · Резюме-игра для БелХард</title>
+  <meta name="description" content="Интерактивное резюме геймдизайнера: пройди три модуля, собери навыки и проекты. Ярослав Кукар — game designer.">
+  <meta name="theme-color" content="#0d0f1e">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%234cc9f0' d='M8 1l6 7-6 7-6-7z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <canvas id="game" width="640" height="360"></canvas>
+  <div id="crt"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-left"><b data-i18n="ui.title"></b><span data-i18n="ui.role"></span></div>
+    <div class="hud-mid"><span id="hud-level"></span><span id="hud-gems"></span></div>
+    <div class="hud-right">
+      <button id="hud-design" onclick="CV.design()"></button>
+      <button id="btn-mute" onclick="CV.mute()">🔊</button>
+      <button class="btn-lang" onclick="CV.lang()">RU</button>
+      <button onclick="CV.pause()">☰</button>
+    </div>
+  </div>
+
+  <!-- Интро уровня -->
+  <div id="intro" class="layer">
+    <div class="intro-panel"><h3 id="intro-name"></h3><p id="intro-text"></p></div>
+  </div>
+
+  <!-- Стартовый экран -->
+  <div id="splash" class="layer">
+    <div class="panel splash-panel">
+      <p class="splash-kicker" data-i18n="ui.tagline"></p>
+      <h1 data-i18n="ui.title"></h1>
+      <p class="splash-role" data-i18n="ui.role"></p>
+      <div class="splash-buttons">
+        <button class="btn primary" onclick="CV.play()" data-i18n="ui.newGame"></button>
+        <button class="btn" id="btn-continue" onclick="CV.play(true)" data-i18n="ui.continueGame"></button>
+        <button class="btn ghost" onclick="CV.doc()" data-i18n="ui.docMode"></button>
+      </div>
+      <p class="splash-hint" data-i18n="ui.controls"></p>
+      <p id="save-hint" class="save-hint"></p>
+      <p class="splash-konami">↑ ↑ ↓ ↓ ← → ← → B A</p>
+    </div>
+    <button class="btn btn-lang lang-float" onclick="CV.lang()">RU</button>
+  </div>
+
+  <!-- Карточка резюме -->
+  <div id="card" class="layer">
+    <div class="panel card-panel">
+      <span id="card-badge" class="card-badge"></span>
+      <h3 id="card-title"></h3>
+      <p id="card-text"></p>
+      <p id="card-hint" class="card-hint"></p>
+      <button class="btn primary" onclick="CV.cardNext()"><span data-i18n="ui.close"></span> ⏎</button>
+    </div>
+  </div>
+
+  <!-- Пауза / инвентарь -->
+  <div id="pause" class="layer">
+    <div class="panel pause-panel">
+      <div class="pause-head">
+        <h2 data-i18n="ui.menu"></h2>
+        <div class="row">
+          <button class="btn primary" onclick="CV.resume()" data-i18n="ui.backToGame"></button>
+          <button class="btn ghost" onclick="CV.toDoc()" data-i18n="ui.toDoc"></button>
+          <button class="btn ghost" onclick="CV.restart()" data-i18n="ui.restart"></button>
+        </div>
+      </div>
+      <div class="tabs">
+        <button data-tab="about" onclick="CV.tab('about')" data-i18n="ui.tabs.about"></button>
+        <button data-tab="skills" onclick="CV.tab('skills')" data-i18n="ui.tabs.skills"></button>
+        <button data-tab="projects" onclick="CV.tab('projects')" data-i18n="ui.tabs.projects"></button>
+        <button data-tab="design" onclick="CV.tab('design')" data-i18n="ui.tabs.design"></button>
+        <button data-tab="contacts" onclick="CV.tab('contacts')" data-i18n="ui.tabs.contacts"></button>
+      </div>
+      <div id="pause-content" class="pause-content"></div>
+    </div>
+  </div>
+
+  <!-- Финал -->
+  <div id="ending" class="layer">
+    <div class="panel ending-panel">
+      <div class="stamp" data-i18n="ui.ending.verdict"></div>
+      <h2 data-i18n="ui.ending.title"></h2>
+      <p data-i18n="ui.ending.subtitle"></p>
+      <div class="stats">
+        <div><span data-i18n="ui.collected"></span><b id="end-gems"></b></div>
+        <div><span data-i18n="ui.deaths"></span><b id="end-deaths"></b></div>
+        <div><span data-i18n="ui.time"></span><b id="end-time"></b></div>
+        <div><span data-i18n="ui.secret"></span><b id="end-secret"></b></div>
+      </div>
+      <div class="row" style="justify-content:center">
+        <button class="btn primary" onclick="CV.print()" data-i18n="ui.pdf"></button>
+        <a class="btn" href="mailto:kukar.yar@gmail.com" data-i18n="ui.ending.writeMe"></a>
+        <a class="btn ghost" href="https://github.com/Kerarty" target="_blank" rel="noopener" data-i18n="ui.ending.github"></a>
+        <button class="btn ghost" onclick="CV.restart()" data-i18n="ui.restart"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Тач-контролы -->
+  <div id="touch">
+    <div class="t-cluster">
+      <button id="t-left" aria-label="left">◀</button>
+      <button id="t-right" aria-label="right">▶</button>
+    </div>
+    <button id="t-jump" aria-label="jump">▲</button>
+  </div>
+
+  <!-- Документ-режим (fast path) -->
+  <div id="doc"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
