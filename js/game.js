@@ -11,6 +11,7 @@
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
+const mod = (a, n) => ((a % n) + n) % n;
 const aabb = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 /* ------------------------------------------------ константы */
@@ -760,41 +761,51 @@ function seeded(str) {
 }
 
 function drawBackground(ctx, theme) {
+  /* Фон рисуется в ЭКРАННЫХ координатах — до translate камеры.
+     Параллакс считается от S.cam и зациклен по ширине экрана,
+     чтобы фон был закрыт на любой глубине уровня. */
   const g = ctx.createLinearGradient(0, 0, 0, VIEW_H);
   g.addColorStop(0, theme.sky[0]); g.addColorStop(1, theme.sky[1]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
+  const cx = S.cam.x, cy = S.cam.y;
   const rnd = seeded(theme.deco + S.levelIdx);
+
   if (theme.deco === 'stars') {
     ctx.fillStyle = '#ffffff';
     for (let i = 0; i < 60; i++) {
-      const x = (rnd() * 900 - S.cam.x * 0.25) % 900, y = rnd() * 220;
-      ctx.globalAlpha = 0.25 + rnd() * 0.5;
-      ctx.fillRect(((x % 900) + 900) % 900 - 100, y, 1.5, 1.5);
+      const bx = rnd() * 1600, by = rnd() * 300, a = 0.25 + rnd() * 0.5;
+      const x = mod(bx - cx * 0.25, VIEW_W + 100) - 50;
+      const y = mod(by - cy * 0.15, VIEW_H + 60) - 30;
+      ctx.globalAlpha = a;
+      ctx.fillRect(x, y, 1.5, 1.5);
     }
     ctx.globalAlpha = 1;
   } else if (theme.deco === 'pipes') {
     ctx.fillStyle = theme.far;
-    for (let i = 0; i < 14; i++) {
-      const x = ((rnd() * 1000 - S.cam.x * 0.3) % 1000 + 1000) % 1000 - 100;
-      const w = 20 + rnd() * 40, h = 120 + rnd() * 180;
-      ctx.fillRect(x, VIEW_H - h, w, h);
-      ctx.fillRect(x - 4, VIEW_H - h, w + 8, 6);
+    for (let i = 0; i < 16; i++) {
+      const bx = rnd() * 1400, w = 20 + rnd() * 40, h = 120 + rnd() * 180;
+      const x = mod(bx - cx * 0.3, VIEW_W + 240) - 120;
+      ctx.fillRect(x, VIEW_H - h, w, h + 160);
     }
   } else if (theme.deco === 'grid') {
     ctx.strokeStyle = 'rgba(123,92,255,0.18)'; ctx.lineWidth = 1;
-    const off = (S.cam.x * 0.3) % 48;
-    for (let x = -off; x < VIEW_W; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VIEW_H); ctx.stroke(); }
-    for (let y = (S.cam.y * 0.2) % 48; y < VIEW_H; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VIEW_W, y); ctx.stroke(); }
+    for (let x = -mod(cx * 0.3, 48); x < VIEW_W; x += 48) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VIEW_H); ctx.stroke();
+    }
+    for (let y = -mod(cy * 0.2, 48); y < VIEW_H; y += 48) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VIEW_W, y); ctx.stroke();
+    }
   }
 
-  /* далёкий силуэт города */
+  /* Далёкий силуэт города — плитка, зацикленная по ширине экрана */
   ctx.fillStyle = theme.far;
   const r2 = seeded('city' + S.levelIdx);
-  for (let i = 0; i < 30; i++) {
-    const bw = 30 + r2() * 60, bh = 30 + r2() * 90;
-    const bx = ((r2() * 1100 - S.cam.x * 0.45) % 1100 + 1100) % 1100 - 100;
-    ctx.fillRect(bx, VIEW_H - 40 - bh, bw, bh);
+  const tile = VIEW_W + 160;
+  for (let i = 0; i < 26; i++) {
+    const bw = 30 + r2() * 60, bh = 30 + r2() * 90, bx = r2() * tile;
+    const x = mod(bx - cx * 0.45, tile) - 80;
+    ctx.fillRect(x, VIEW_H - 40 - bh, bw, bh + 120);
   }
 }
 
@@ -969,11 +980,11 @@ function frame(now) {
     S.cam.shake *= (1 - 8 * dt);
 
     const theme = THEMES[S.lvl.def.theme];
+    drawBackground(ctx, theme); // экранное пространство, до камеры
+
     ctx.save();
     const shx = (Math.random() - 0.5) * S.cam.shake * 2, shy = (Math.random() - 0.5) * S.cam.shake * 2;
     ctx.translate(-Math.round(S.cam.x) + shx, -Math.round(S.cam.y) + shy);
-
-    drawBackground(ctx, theme);
 
     /* видимые тайлы */
     const x0 = Math.max(0, Math.floor(S.cam.x / TILE)), x1 = Math.min(S.lvl.w - 1, Math.ceil((S.cam.x + VIEW_W) / TILE));
@@ -1011,9 +1022,10 @@ setInterval(() => {
 }, 33);
 
 function resize() {
-  const scale = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H);
-  canvas.style.width = Math.floor(VIEW_W * scale) + 'px';
-  canvas.style.height = Math.floor(VIEW_H * scale) + 'px';
+  /* cover: канвас закрывает всё окно целиком, излишек обрезается по центру */
+  const scale = Math.max(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H);
+  canvas.style.width = Math.ceil(VIEW_W * scale) + 'px';
+  canvas.style.height = Math.ceil(VIEW_H * scale) + 'px';
 }
 window.addEventListener('resize', resize);
 
